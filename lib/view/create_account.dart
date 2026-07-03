@@ -5,6 +5,7 @@ import 'package:page_transition/page_transition.dart';
 import 'package:qriza/reusable_component/app_scaffold.dart';
 import 'package:qriza/reusable_component/custom_button.dart';
 import 'package:qriza/reusable_component/custom_input.dart';
+import 'package:qriza/view/account_details.dart';
 import 'package:qriza/view/login_screen.dart';
 
 class CreateAccount extends StatefulWidget {
@@ -181,9 +182,23 @@ class _CreateAccountState extends State<CreateAccount> {
             CustomButton(
               label: "Continue",
               onTap: () {
-                if (formKey.currentState!.validate()) {
-                  // Proceed to the next step of account creation
-                }
+                // if (formKey.currentState!.validate()) {
+                //   // Proceed to the next step of account creation
+                //   Navigator.push(
+                //     context,
+                //     PageTransition(
+                //       type: PageTransitionType.rightToLeft,
+                //       child: AccountDetails(),
+                //     ),
+                //   );
+                // }
+                Navigator.push(
+                  context,
+                  PageTransition(
+                    type: PageTransitionType.rightToLeft,
+                    child: AccountDetails(),
+                  ),
+                );
               },
             ),
             SizedBox(height: screenHeight * 0.05),
