@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:qriza/view/login_screen.dart';
+import 'package:qriza/di/injection_container.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initDI(); // Initialize dependency injection before running the app
   runApp(const MyApp());
 }
 

@@ -2,9 +2,11 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:page_transition/page_transition.dart';
+import 'package:qriza/di/injection_container.dart';
 import 'package:qriza/reusable_component/app_scaffold.dart';
 import 'package:qriza/reusable_component/custom_button.dart';
 import 'package:qriza/reusable_component/custom_input.dart';
+import 'package:qriza/services/api_service.dart';
 import 'package:qriza/view/account_details.dart';
 import 'package:qriza/view/login_screen.dart';
 
@@ -24,6 +26,8 @@ class _CreateAccountState extends State<CreateAccount> {
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
   TextEditingController confirmPasswordController = TextEditingController();
+  bool isLoading = false;
+
   @override
   Widget build(BuildContext context) {
     screenWidth = MediaQuery.of(context).size.width;
@@ -179,28 +183,35 @@ class _CreateAccountState extends State<CreateAccount> {
               ),
             ),
             SizedBox(height: screenHeight * 0.05),
-            CustomButton(
-              label: "Continue",
-              onTap: () {
-                // if (formKey.currentState!.validate()) {
-                //   // Proceed to the next step of account creation
-                //   Navigator.push(
-                //     context,
-                //     PageTransition(
-                //       type: PageTransitionType.rightToLeft,
-                //       child: AccountDetails(),
-                //     ),
-                //   );
-                // }
-                Navigator.push(
-                  context,
-                  PageTransition(
-                    type: PageTransitionType.rightToLeft,
-                    child: AccountDetails(),
+            isLoading
+                ? Center(child: CircularProgressIndicator())
+                : CustomButton(
+                    label: "Continue",
+                    onTap: () async {
+                      if (formKey.currentState!.validate()) {
+                                setState(() {
+                                  isLoading = true;
+                                });
+                                final error = await onSignUpPressed();
+                                setState(() {
+                                  isLoading = false;
+                                });
+                                if (error == null) {
+                          Navigator.push(
+                            context,
+                            PageTransition(
+                              type: PageTransitionType.rightToLeft,
+                              child: AccountDetails(),
+                            ),
+                          );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(error)),
+                                  );
+                        }
+                      }
+                    },
                   ),
-                );
-              },
-            ),
             SizedBox(height: screenHeight * 0.05),
           ],
         ),
@@ -227,5 +238,24 @@ class _CreateAccountState extends State<CreateAccount> {
         ),
       ),
     );
+  }
+
+  /// Returns null on success, or an error message string on failure.
+  Future<String?> onSignUpPressed() async {
+    final apiService = sl<ApiService>();
+    try {
+      final user = await apiService.registerBasicInfo(
+        fullName: fullNameController.text,
+        email: emailController.text,
+        password: passwordController.text,
+      );
+      print('User registered successfully: ${user.toMap()}');
+      return null;
+    } catch (e) {
+      final msg = e?.toString() ?? 'Signup failed. Please try again.';
+      print(msg);
+      // strip 'Exception: ' prefix if present
+      return msg.replaceFirst('Exception: ', '');
+    }
   }
 }
