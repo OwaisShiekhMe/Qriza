@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 class DioClient {
   final Dio dio;
@@ -8,7 +9,7 @@ class DioClient {
   DioClient()
     : dio = Dio(
         BaseOptions(
-          baseUrl: _getBaseUrl(),
+          baseUrl: "http://192.168.100.186:4000/api",
           connectTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 10),
           // Expect JSON by default; ApiService expects decoded JSON maps.
@@ -29,6 +30,16 @@ class DioClient {
   }
 
   static String _getBaseUrl() {
-    return 'http://localhost:4000/api';
+    if (kIsWeb) {
+      return 'http://127.0.0.1:4000/api';
+    }
+
+    // If running on an Android Emulator/Device
+    if (Platform.isAndroid) {
+      return 'http://10.0.2.2:4000/api';
+    }
+
+    // Windows / iOS Simulator / macOS
+    return 'http://127.0.0.1:4000/api';
   }
 }

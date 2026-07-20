@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:qriza/di/injection_container.dart';
@@ -9,15 +10,16 @@ import 'package:qriza/reusable_component/custom_input.dart';
 import 'package:qriza/services/api_service.dart';
 import 'package:qriza/view/account_details.dart';
 import 'package:qriza/view/login_screen.dart';
+import 'package:qriza/view_model/user_view_model.dart';
 
-class CreateAccount extends StatefulWidget {
+class CreateAccount extends ConsumerStatefulWidget {
   const CreateAccount({super.key});
 
   @override
-  State<CreateAccount> createState() => _CreateAccountState();
+  ConsumerState<CreateAccount> createState() => _CreateAccountState();
 }
 
-class _CreateAccountState extends State<CreateAccount> {
+class _CreateAccountState extends ConsumerState<CreateAccount> {
   late double screenWidth;
   late double screenHeight;
   late TextScaler textScaler;
@@ -33,6 +35,8 @@ class _CreateAccountState extends State<CreateAccount> {
     screenWidth = MediaQuery.of(context).size.width;
     screenHeight = MediaQuery.of(context).size.height;
     textScaler = MediaQuery.of(context).textScaler;
+    final userState = ref.watch(userViewModelProvider);
+
     return AppScaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -183,35 +187,14 @@ class _CreateAccountState extends State<CreateAccount> {
               ),
             ),
             SizedBox(height: screenHeight * 0.05),
-            isLoading
+            userState.isLoading
                 ? Center(child: CircularProgressIndicator())
                 : CustomButton(
-                    label: "Continue",
-                    onTap: () async {
-                      if (formKey.currentState!.validate()) {
-                                setState(() {
-                                  isLoading = true;
-                                });
-                                final error = await onSignUpPressed();
-                                setState(() {
-                                  isLoading = false;
-                                });
-                                if (error == null) {
-                          Navigator.push(
-                            context,
-                            PageTransition(
-                              type: PageTransitionType.rightToLeft,
-                              child: AccountDetails(),
-                            ),
-                          );
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(error)),
-                                  );
-                        }
-                      }
-                    },
-                  ),
+                  label: "Continue",
+                  onTap: () async {
+                    _handleSignupSubmit();
+                  },
+                ),
             SizedBox(height: screenHeight * 0.05),
           ],
         ),
@@ -256,6 +239,44 @@ class _CreateAccountState extends State<CreateAccount> {
       print(msg);
       // strip 'Exception: ' prefix if present
       return msg.replaceFirst('Exception: ', '');
+    }
+  }
+
+  Future<void> _handleSignupSubmit() async {
+    if (!formKey.currentState!.validate()) {
+      return;
+    }
+
+    final result = await ref
+        .read(userViewModelProvider.notifier)
+        .registerStepOne(
+          fullNameController.text.trim(),
+          emailController.text.trim(),
+          passwordController.text.trim(),
+        );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (result['success'] == true) {
+      final String userId = result['userId'] ?? '';
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder:
+              (context) =>
+                  const AccountDetails(), // Replace with your exact next screen widget
+          settings: RouteSettings(arguments: userId),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['error'] ?? 'Registration failed'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
 }

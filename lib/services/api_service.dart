@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:dio/dio.dart';
+import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dio_client.dart';
 import '../model/user.dart';
@@ -35,7 +35,8 @@ class ApiService {
         if (responseData['error'] != null) {
           throw Exception(responseData['error'].toString());
         }
-        if (responseData['message'] != null && responseData['success'] != true) {
+        if (responseData['message'] != null &&
+            responseData['success'] != true) {
           throw Exception(responseData['message'].toString());
         }
       }
@@ -70,6 +71,72 @@ class ApiService {
         }
       } else if (data is String) {
         errorMessage = data;
+      }
+      throw Exception(errorMessage);
+    }
+  }
+
+  Future<Map<String, dynamic>> loginAndCheckStatus({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      // 1. Check local SharedPreferences cache
+      final String? cachedUserJson = _prefs.getString("cached_user_signup");
+
+      if (cachedUserJson != null) {
+        final Map<String, dynamic> cachedUser = jsonDecode(cachedUserJson);
+
+        if (cachedUser['email'] == email) {
+          print("🚀 Fast Login! Loaded from local cache.");
+          print(cachedUser);
+
+          if (cachedUser['isSignupComplete'] == false) {
+            return {
+              "status": "PAYMENT",
+              "userId": cachedUser['id'] ?? cachedUser['userId'],
+            };
+          } else {
+            return {"status": "HOME"};
+          }
+        }
+      }
+
+      // 2. Cache missed. Hit the backend
+      print("📡 Cache missed. Querying database...");
+      final response = await _dioClient.dio.post(
+        '/user/login',
+        data: {'email': email, 'password': password},
+      );
+
+      final responseData = response.data;
+
+      if (responseData is Map && responseData['success'] == true) {
+        final userData = responseData['user'];
+        final String token = responseData['token'] ?? '';
+
+        await _prefs.setString("jwt_token", token);
+        await _prefs.setString("cached_user_signup", jsonEncode(userData));
+
+        if (userData['isSignupComplete'] == false) {
+          return {"status": "PAYMENT", "userId": userData['id']};
+        } else {
+          return {"status": "HOME"};
+        }
+      } else {
+        final msg =
+            responseData['error'] ??
+            responseData['message'] ??
+            'Invalid credentials';
+        throw Exception(msg);
+      }
+    } on DioException catch (e) {
+      String errorMessage = 'Connection failed. Please check your backend.';
+      if (e.response?.data is Map) {
+        errorMessage =
+            e.response?.data['error'] ??
+            e.response?.data['message'] ??
+            errorMessage;
       }
       throw Exception(errorMessage);
     }
